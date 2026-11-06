@@ -29,7 +29,7 @@ import {
   calcularPago,
   fechaDeHoy,
 } from '../../../data/prestamo.calculos';
-import { DatosRegistro } from '../../../data/prestamo.model';
+import { DatosRegistro, TipoPrestamo } from '../../../data/prestamo.model';
 import { RegistrarPrestamoStore } from '../../../data/registrar-prestamo.store';
 import { MAX_NOMBRE, PATRON_NOMBRE, entero, noVacio } from '../../../data/prestamo.validadores';
 import { TablaAmortizacionProyectada } from '../../components/tabla-amortizacion-proyectada/tabla-amortizacion-proyectada';
@@ -102,6 +102,8 @@ export class RegistrarPrestamo {
     null,
   );
 
+  protected readonly tiposPrestamo: TipoPrestamo[] = ['Diario', 'Semanal', 'Quincenal', 'Mensual'];
+
   /** Días de cobro: de lunes a sábado. */
   protected readonly dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   protected readonly maxNombre = MAX_NOMBRE;
@@ -123,6 +125,7 @@ export class RegistrarPrestamo {
         Validators.min(0.01),
         Validators.max(100),
       ]),
+      tipoPrestamo: this.fb.control<TipoPrestamo>('Semanal', Validators.required),
       diaPago: [DIA_PAGO_INICIAL, Validators.required],
       /*
        * Campos calculados: disabled (no se editan ni se validan; Angular omite los disabled).
@@ -134,6 +137,12 @@ export class RegistrarPrestamo {
       // Calculado: meses × 4 (número de pagos semanales).
       plazo: this.fb.control<number | null>({ value: null, disabled: true }),
       meses: this.fb.control<number | null>(null, [Validators.required, Validators.min(1), entero]),
+      // Solo en préstamos diarios (sustituye a meses). Deshabilitado en los demás tipos: no se valida.
+      dias: this.fb.control<number | null>({ value: null, disabled: true }, [
+        Validators.required,
+        Validators.min(1),
+        entero,
+      ]),
       // Por defecto, hoy (editable).
       fechaEntrega: [fechaDeHoy(), Validators.required],
       // Calculada: primer pago, el primer día de cobro al menos 7 días después de la entrega.
@@ -149,8 +158,19 @@ export class RegistrarPrestamo {
     { initialValue: this.form.valid },
   );
 
-  /** Ver Detalle y Generar Préstamo se habilitan solo con el formulario válido y sin bloqueo. */
-  protected readonly puedeContinuar = computed(() => this.formularioValido() && !this.bloqueado());
+  /** Préstamo diario: se capturan días en lugar de meses. */
+  protected readonly esDiario = toSignal(
+    this.form.controls.condiciones.controls.tipoPrestamo.valueChanges.pipe(map(tipo => tipo === 'Diario')),
+    { initialValue: false },
+  );
+
+  /**
+   * Ver Detalle y Generar Préstamo se habilitan solo con el formulario válido y sin bloqueo.
+   * Préstamo diario: deshabilitados hasta definir sus reglas de cálculo (pago, plazo y fechas).
+   */
+  protected readonly puedeContinuar = computed(
+    () => this.formularioValido() && !this.bloqueado() && !this.esDiario(),
+  );
 
   constructor() {
     // Cliente existente: sus datos no se capturan (grupo deshabilitado, no se valida) y se cargan del backend.
@@ -182,6 +202,17 @@ export class RegistrarPrestamo {
     });
 
     const c = this.form.controls.condiciones.controls;
+
+    // Diario: se capturan días y meses se deshabilita; los demás tipos, al revés.
+    c.tipoPrestamo.valueChanges.pipe(takeUntilDestroyed()).subscribe(tipo => {
+      if (tipo === 'Diario') {
+        c.meses.disable();
+        c.dias.enable();
+      } else {
+        c.dias.disable();
+        c.meses.enable();
+      }
+    });
 
     // La fecha de inicio (primer pago) depende de la entrega y del día de pago.
     merge(c.fechaEntrega.valueChanges, c.diaPago.valueChanges)

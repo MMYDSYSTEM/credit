@@ -1,0 +1,70 @@
+# Publica SOLO la carpeta frontend/ (Angular) en GitHub Pages.
+# La carpeta backend/ no se compila ni se publica.
+# Antes de usarlo, cambia NOMBRE_PROYECTO por el nombre de tu proyecto en frontend/angular.json.
+
+name: Publicar Angular en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'                   # solo se ejecuta si cambió algo de Angular
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:                    # permite publicar a mano desde la pestaña Actions
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  NOMBRE_PROYECTO: credit-web            # ← nombre del proyecto en frontend/angular.json
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend     # todos los comandos se ejecutan dentro de frontend/
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v5
+
+      - name: Instalar Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar Angular
+        # El sitio vive en https://<usuario>.github.io/<repositorio>/
+        run: npx ng build --base-href "/${{ github.event.repository.name }}/"
+
+      - name: Preparar rutas de Angular
+        # GitHub Pages muestra 404.html en rutas que no existen como archivo;
+        # al ser una copia de index.html, Angular arranca y abre la pantalla correcta.
+        run: cp dist/$NOMBRE_PROYECTO/browser/index.html dist/$NOMBRE_PROYECTO/browser/404.html
+
+      - name: Empaquetar sitio
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: frontend/dist/${{ env.NOMBRE_PROYECTO }}/browser
+
+  publicar:
+    needs: compilar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.publicacion.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: publicacion
+        uses: actions/deploy-pages@v4

@@ -4,9 +4,13 @@ export type EstadoPrestamo = 'ACTIVO' | 'LIQUIDADO';
 
 export type EstadoAmortizacion = 'PAGADA' | 'PENDIENTE' | 'VENCIDA';
 
+export type TipoPrestamo = 'Diario' | 'Semanal' | 'Quincenal' | 'Mensual';
+
 export interface Condiciones {
   monto: number;
   tasaMensual: number;
+  tipoPrestamo: TipoPrestamo;
+  dias: number | null; // solo en préstamos diarios: días que dura el préstamo
   diaPago: string;
   pago: number; // pago semanal
   plazo: number; // número de pagos semanales
