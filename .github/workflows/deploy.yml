@@ -1,6 +1,6 @@
 # Publica SOLO la carpeta frontend/ (Angular) en GitHub Pages.
 # La carpeta backend/ no se compila ni se publica.
-# Antes de usarlo, cambia NOMBRE_PROYECTO por el nombre de tu proyecto en frontend/angular.json.
+# La carpeta compilada se detecta sola dentro de frontend/dist/.
 
 name: Publicar Angular en GitHub Pages
 
@@ -20,9 +20,6 @@ permissions:
 concurrency:
   group: pages
   cancel-in-progress: true
-
-env:
-  NOMBRE_PROYECTO: credit-web            # ← nombre del proyecto en frontend/angular.json
 
 jobs:
   compilar:
@@ -49,14 +46,41 @@ jobs:
         run: npx ng build --base-href "/${{ github.event.repository.name }}/"
 
       - name: Preparar rutas de Angular
+        id: salida
+        # Busca la carpeta compilada sin importar cómo esté configurado outputPath en angular.json.
         # GitHub Pages muestra 404.html en rutas que no existen como archivo;
         # al ser una copia de index.html, Angular arranca y abre la pantalla correcta.
-        run: cp dist/$NOMBRE_PROYECTO/browser/index.html dist/$NOMBRE_PROYECTO/browser/404.html
+        run: |
+          echo "Contenido de dist/:"
+          find dist -maxdepth 3 -name "index*.html"
+
+          INDEX=$(find dist -name index.html -not -path "*/server/*" | head -n 1)
+
+          # Proyectos con SSR generan index.csr.html en lugar de index.html
+          if [ -z "$INDEX" ]; then
+            CSR=$(find dist -name index.csr.html -not -path "*/server/*" | head -n 1)
+            if [ -n "$CSR" ]; then
+              INDEX="$(dirname "$CSR")/index.html"
+              cp "$CSR" "$INDEX"
+              echo "Se usó index.csr.html (proyecto con SSR)"
+            fi
+          fi
+
+          if [ -z "$INDEX" ]; then
+            echo "No se encontró index.html dentro de dist/. Estructura generada:"
+            ls -R dist | head -50
+            exit 1
+          fi
+
+          CARPETA=$(dirname "$INDEX")
+          echo "Carpeta que se publicará: frontend/$CARPETA"
+          cp "$INDEX" "$CARPETA/404.html"
+          echo "carpeta=frontend/$CARPETA" >> "$GITHUB_OUTPUT"
 
       - name: Empaquetar sitio
         uses: actions/upload-pages-artifact@v4
         with:
-          path: frontend/dist/${{ env.NOMBRE_PROYECTO }}/browser
+          path: ${{ steps.salida.outputs.carpeta }}
 
   publicar:
     needs: compilar
