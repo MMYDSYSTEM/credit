@@ -7,7 +7,8 @@ import Aura from '@primeuix/themes/aura';
 
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
-import { clientesPrestamosMockInterceptor } from './mock/clientes-prestamos.mock';
+import { apiUrlInterceptor } from './core/http/api-url.interceptor';
+import { clientesPrestamosMockInterceptor } from './core/http/clientes-prestamos.mock';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -16,7 +17,7 @@ export const appConfig: ApplicationConfig = {
     // Backend simulado solo si environment.mockApi es true; con false se usa el backend real.
     provideHttpClient(
       withFetch(),
-      withInterceptors(environment.mockApi ? [clientesPrestamosMockInterceptor] : []),
+      withInterceptors([apiUrlInterceptor, ...(environment.mockApi ? [clientesPrestamosMockInterceptor] : [])]),
     ),
     provideClientHydration(),
     providePrimeNG({

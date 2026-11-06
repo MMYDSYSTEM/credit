@@ -58,6 +58,29 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
 
+## Pendientes
+
+Diferencias entre el código actual y las instrucciones de abajo. No se corrigieron al reorganizar
+la estructura porque cambian el comportamiento (sección 8.4, paso 5); cada una va en un cambio aparte.
+
+- [ ] **Stores de una sola pantalla (sección 5.3).** `prestamo-detalle.store.ts`, `prestamos-cliente.store.ts`
+      y `registrar-prestamo.store.ts` los usa una sola página cada uno: su estado debería vivir en la página.
+- [ ] **Enviar solo lo capturado (regla 5.6.4).** Al registrar un préstamo se envían también pago, plazo,
+      fecha de inicio y fecha de término, que calcula el frontend. El backend debe calcularlos.
+- [ ] **Mostrar los cálculos como estimados (regla 5.6.5).** El pago y la tabla de amortización del alta
+      deben decir "Pago estimado" / "Tabla estimada" hasta recibir la respuesta del backend.
+- [ ] **Parámetros del negocio desde el backend (regla 5.6.3).** La tasa por defecto (15 %), los pagos por mes (4)
+      y los días mínimos al primer pago (7) están fijos en el código; deben venir de un endpoint de configuración.
+- [ ] **Botón "Generar Préstamo" (sección 5.5).** Hoy se deshabilita con el formulario inválido; debe deshabilitarse
+      solo mientras se envía y, al pulsarlo con errores, marcar los campos como tocados.
+- [ ] **Signal Forms (sección 5.5).** El formulario de registro usa Reactive Forms por la excepción 2;
+      migrarlo requiere una tarea aprobada.
+- [ ] **Formas de Angular 22 (sección 1.1).** Se mantienen `@Injectable`, `changeDetection: OnPush` explícito
+      y `withFetch()`; migrar a `@Service()`, OnPush por defecto y `provideHttpClient()` en una tarea dedicada.
+- [ ] **Lint.** El proyecto no tiene lint. Agregar ESLint y una regla de límites entre carpetas
+      (Sheriff o `eslint-plugin-boundaries`) para comprobar la sección 4 automáticamente.
+- [ ] **Presupuesto del bundle inicial.** La build avisa 575 kB contra un límite de 500 kB.
+
 ## Instrucciones
 # Arquitectura del frontend Angular
 
