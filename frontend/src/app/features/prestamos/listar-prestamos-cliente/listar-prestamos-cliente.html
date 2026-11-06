@@ -1,0 +1,57 @@
+<a routerLink="/clientes" class="mb-4 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+  <svg data-p-icon="arrow-left" class="size-3"></svg> Clientes
+</a>
+
+@if (datos(); as d) {
+<h1 class="mb-4 text-xl font-semibold sm:text-2xl">Préstamos de {{ d.clienteNombre }}</h1>
+
+<section class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">
+  <!-- Desplazamiento horizontal en pantallas angostas -->
+  <div class="overflow-x-auto">
+    <p-table [value]="d.prestamos" dataKey="id" [tableStyle]="{ 'min-width': '52rem' }" size="small">
+      <ng-template #header>
+        <tr>
+          <th scope="col">Folio</th>
+          <th scope="col" class="text-right">Monto</th>
+          <th scope="col" class="text-right">Pago Semanal</th>
+          <th scope="col">Plazo</th>
+          <th scope="col">Entrega</th>
+          <th scope="col">Término</th>
+          <th scope="col">Estado</th>
+          <th scope="col"><span class="sr-only">Acciones</span></th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-p>
+        <tr>
+          <td class="font-medium">{{ p.folio }}</td>
+          <td class="text-right">{{ p.monto | currency: 'MXN' : 'symbol-narrow' }}</td>
+          <td class="text-right">{{ p.pago | currency: 'MXN' : 'symbol-narrow' }}</td>
+          <td>{{ p.plazo }} pagos</td>
+          <td>{{ p.fechaEntrega }}</td>
+          <td>{{ p.fechaTermino }}</td>
+          <td><p-tag [value]="p.estadoEtiqueta" [severity]="p.estadoSeveridad" /></td>
+          <td class="text-right">
+            <a pButton size="small" [outlined]="true" [routerLink]="['/prestamos', p.id]"
+              [attr.aria-label]="'Ver detalle del préstamo ' + p.folio">
+              <svg data-p-icon="eye"></svg>
+              Ver Detalle
+            </a>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage>
+        <tr>
+          <td colspan="8">Este cliente no tiene préstamos.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>
+} @else if (error()) {
+<div class="flex flex-col items-start gap-3">
+  <p role="alert" class="text-red-600 dark:text-red-400">{{ error() }}</p>
+  <button pButton type="button" severity="secondary" (click)="recargar()">Reintentar</button>
+</div>
+} @else {
+<p role="status" class="text-muted-color">Cargando préstamos…</p>
+}

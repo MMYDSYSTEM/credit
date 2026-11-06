@@ -1,0 +1,31 @@
+<section aria-labelledby="titulo-amortizaciones-prestamo" class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">
+  <h2 id="titulo-amortizaciones-prestamo" class="mb-3 text-lg font-semibold">Amortizaciones</h2>
+
+  <!-- Desplazamiento horizontal en pantallas angostas -->
+  <div class="overflow-x-auto">
+    <p-table [value]="amortizaciones()" dataKey="numero" [tableStyle]="{ 'min-width': '44rem' }" size="small">
+      <ng-template #header>
+        <tr>
+          <th scope="col">NP</th>
+          <th scope="col">Fecha</th>
+          <th scope="col" class="text-right">Pago Semanal</th>
+          <th scope="col" class="text-right">Capital</th>
+          <th scope="col" class="text-right">Interés</th>
+          <th scope="col" class="text-right">Extras</th>
+          <th scope="col">Estado</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-a>
+        <tr [class]="a.esProxima ? 'bg-primary-500/15! font-semibold' : ''" [attr.aria-current]="a.esProxima ? 'true' : null">
+          <td>{{ a.numero }}</td>
+          <td>{{ a.fechaVencimiento }}</td>
+          <td class="text-right">{{ a.pagoSemanal | currency: 'MXN' : 'symbol-narrow' }}</td>
+          <td class="text-right">{{ a.capital | currency: 'MXN' : 'symbol-narrow' }}</td>
+          <td class="text-right">{{ a.interes | currency: 'MXN' : 'symbol-narrow' }}</td>
+          <td class="text-right">{{ a.gastos | currency: 'MXN' : 'symbol-narrow' }}</td>
+          <td><p-tag [value]="a.etiqueta" [severity]="a.severidad" /></td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>

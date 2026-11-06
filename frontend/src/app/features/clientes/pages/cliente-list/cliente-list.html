@@ -1,0 +1,139 @@
+<section>
+  @if (mensaje()) {
+    <p role="status" class="mb-4 rounded-lg bg-green-500/10 px-4 py-2 text-sm text-green-700 dark:text-green-400">
+      {{ mensaje() }}
+    </p>
+  }
+
+  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <h1 class="text-xl font-semibold sm:text-2xl">Clientes</h1>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <input
+        pInputText
+        type="search"
+        class="w-full sm:w-80"
+        placeholder="Buscar por Nombre o Apellidos"
+        aria-label="Buscar por Nombre o Apellidos"
+        [value]="busqueda()"
+        (input)="onBuscar($event)"
+      />
+      <!-- Préstamo para un cliente nuevo -->
+      <a pButton routerLink="/prestamos/registrar">
+        <svg data-p-icon="plus"></svg>
+        Nuevo Préstamo
+      </a>
+    </div>
+  </div>
+
+  @if (error()) {
+    <p role="alert" class="mb-4 text-sm text-red-600 dark:text-red-400">{{ error() }}</p>
+  }
+
+  <p-table
+    [value]="clientesFiltrados()"
+    dataKey="id"
+    [loading]="cargando()"
+    [paginator]="true"
+    [rows]="10"
+    [rowsPerPageOptions]="[10, 25, 50]"
+    [first]="primeraFila()"
+    (firstChange)="primeraFila.set($event ?? 0)"
+  >
+    <ng-template #header>
+      <tr>
+        <th>
+          <span class="md:hidden">Cliente</span>
+          <span class="hidden md:inline">Nombre</span>
+        </th>
+        <th class="hidden md:table-cell">Apellido Paterno</th>
+        <th class="hidden md:table-cell">Apellido Materno</th>
+        <th class="hidden md:table-cell">Email</th>
+        <th class="text-right">Acciones</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-cliente>
+      <tr>
+        <td>
+          <!-- Celular: nombre completo + email -->
+          <div class="md:hidden">
+            <div class="font-medium">{{ cliente.nombre }} {{ cliente.apellidoPaterno }} {{ cliente.apellidoMaterno }}</div>
+            <div class="text-sm break-all text-muted-color">{{ cliente.email }}</div>
+          </div>
+          <!-- Escritorio -->
+          <span class="hidden md:inline">{{ cliente.nombre }}</span>
+        </td>
+        <td class="hidden md:table-cell">{{ cliente.apellidoPaterno }}</td>
+        <td class="hidden md:table-cell">{{ cliente.apellidoMaterno }}</td>
+        <td class="hidden md:table-cell">{{ cliente.email }}</td>
+        <td class="text-right whitespace-nowrap">
+          <!-- Ver préstamos -->
+          @if (cliente.prestamos > 0) {
+            <a
+              pButton
+              size="small"
+              [outlined]="true"
+              [routerLink]="['/prestamos/cliente', cliente.id]"
+              [attr.aria-label]="'Ver préstamos de ' + cliente.nombre + ' ' + cliente.apellidoPaterno + ' ' + cliente.apellidoMaterno"
+            >
+              <svg data-p-icon="wallet"></svg>
+              {{ cliente.prestamos }}
+            </a>
+          } @else {
+            <button
+              pButton
+              type="button"
+              size="small"
+              [outlined]="true"
+              disabled
+              [attr.aria-label]="cliente.nombre + ' no tiene préstamos'"
+            >
+              <svg data-p-icon="wallet"></svg>
+              0
+            </button>
+          }
+
+          <!-- Nuevo préstamo: solo si no tiene un préstamo activo (lo decide el backend) -->
+          @if (cliente.prestamoActivo) {
+            <button
+              pButton
+              type="button"
+              size="small"
+              [outlined]="true"
+              [iconOnly]="true"
+              class="ml-2"
+              disabled
+              title="Tiene un préstamo activo"
+              [attr.aria-label]="cliente.nombre + ' tiene un préstamo activo (folio ' + cliente.prestamoActivo.folio + ')'"
+            >
+              <svg data-p-icon="plus"></svg>
+            </button>
+          } @else {
+            <a
+              pButton
+              size="small"
+              [outlined]="true"
+              [iconOnly]="true"
+              class="ml-2"
+              [routerLink]="['/prestamos/registrar', cliente.id]"
+              title="Nuevo préstamo"
+              [attr.aria-label]="'Nuevo préstamo para ' + cliente.nombre + ' ' + cliente.apellidoPaterno + ' ' + cliente.apellidoMaterno"
+            >
+              <svg data-p-icon="plus"></svg>
+            </a>
+          }
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="5">
+          @if (busqueda()) {
+            No se encontraron clientes para "{{ busqueda() }}".
+          } @else if (!cargando()) {
+            No hay clientes registrados.
+          }
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</section>

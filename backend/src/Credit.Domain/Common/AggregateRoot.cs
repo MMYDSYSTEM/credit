@@ -1,8 +1,8 @@
 namespace Credit.Domain.Common;
 
-public abstract class AggregateRoot : Entity
+public abstract class AggregateRoot<TId> : Entity<TId> where TId : notnull
 {
-    protected AggregateRoot(Guid id) : base(id) { }
+    protected AggregateRoot(TId id) : base(id) { }
 
     // Requerido por EF Core
     protected AggregateRoot() { }

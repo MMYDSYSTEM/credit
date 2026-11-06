@@ -2,7 +2,7 @@ using Credit.Domain.Common;
 
 namespace Credit.Domain.Prestamos;
 
-public sealed class Prestamo : AggregateRoot
+public sealed class Prestamo : AggregateRoot<Guid>
 {
     private Prestamo(Guid id) : base(id) { }
 

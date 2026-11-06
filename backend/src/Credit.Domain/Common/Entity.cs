@@ -1,29 +1,32 @@
 namespace Credit.Domain.Common;
 
-public abstract class Entity
+public abstract class Entity<TId> : IEquatable<Entity<TId>> where TId : notnull
 {
-    public Guid Id { get; protected set; }
+    public TId Id { get; protected set; } = default!;
 
-    protected Entity(Guid id)
-    {
-        Id = id;
-    }
+    protected Entity(TId id) => Id = id;
 
     // Requerido por EF Core
     protected Entity() { }
 
-    public override bool Equals(object? obj)
-    {
-        if (obj is not Entity other) return false;
-        if (ReferenceEquals(this, other)) return true;
-        if (GetType() != other.GetType()) return false;
+    // Con Id int, la entidad es "transitoria" (Id = 0) hasta guardarse en la BD, se puede sustituir por = Id is default;
+    private bool EsTransitoria => EqualityComparer<TId>.Default.Equals(Id, default!);
 
-        return Id == other.Id;
+    public bool Equals(Entity<TId>? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true; //Previene que 2 objetos sean iguales al no compartir el mismo espacio de memoria o la misma instancia
+        if (GetType() != other.GetType()) return false;
+        if (EsTransitoria || other.EsTransitoria) return false;
+
+        return EqualityComparer<TId>.Default.Equals(Id, other.Id);
     }
 
-    public override int GetHashCode() => Id.GetHashCode();
+    public override bool Equals(object? obj) => Equals(obj as Entity<TId>);
 
-    public static bool operator ==(Entity? left, Entity? right) => Equals(left, right);
+    public override int GetHashCode() => EqualityComparer<TId>.Default.GetHashCode(Id);
 
-    public static bool operator !=(Entity? left, Entity? right) => !Equals(left, right);
+    public static bool operator ==(Entity<TId>? left, Entity<TId>? right) => Equals(left, right);
+
+    public static bool operator !=(Entity<TId>? left, Entity<TId>? right) => !Equals(left, right);
 }

@@ -1,0 +1,39 @@
+@if (prestamo(); as p) {
+<a [routerLink]="['/prestamos/cliente', p.clienteId]"
+  class="mb-4 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+  <svg data-p-icon="arrow-left" class="size-3"></svg> Préstamos de {{ p.clienteNombre }}
+</a>
+
+<header class="mb-6">
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-xl font-semibold sm:text-2xl">Préstamo {{ p.folio }}</h1>
+    <p-tag [value]="p.estadoEtiqueta" [severity]="p.estadoSeveridad" />
+  </div>
+  <p class="mt-1 text-sm text-muted-color">
+    {{ p.clienteNombre }} · Cobro los {{ p.diaPago }} · Entrega {{ p.fechaEntrega }}
+  </p>
+</header>
+
+@if (error()) {
+<p role="alert" class="mb-4 text-sm text-red-600 dark:text-red-400">{{ error() }}</p>
+}
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="flex min-w-0 flex-col gap-6 lg:col-span-2">
+    <app-resumen-prestamo [prestamo]="p" />
+    <app-tabla-amortizaciones-prestamo [amortizaciones]="p.amortizaciones" />
+  </div>
+
+  <!-- En móvil esta columna pasa debajo de la tabla -->
+  <aside class="flex flex-col gap-6">
+    <app-condiciones-prestamo [prestamo]="p" />
+  </aside>
+</div>
+} @else if (error()) {
+<div class="flex flex-col items-start gap-3">
+  <p role="alert" class="text-red-600 dark:text-red-400">{{ error() }}</p>
+  <button pButton type="button" severity="secondary" (click)="recargar()">Reintentar</button>
+</div>
+} @else {
+<p role="status" class="text-muted-color">Cargando préstamo…</p>
+}

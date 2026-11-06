@@ -1,0 +1,29 @@
+@let p = prestamo();
+<section aria-label="Resumen del préstamo" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <article class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">
+    <h2 class="text-sm text-muted-color">Total a Pagar</h2>
+    <p class="mt-1 text-2xl font-semibold">{{ p.totales.total | currency: 'MXN' : 'symbol-narrow' }}</p>
+    <p class="mt-1 text-sm text-muted-color">
+      Capital {{ p.totales.capital | currency: 'MXN' : 'symbol-narrow' }} · Interés
+      {{ p.totales.interes | currency: 'MXN' : 'symbol-narrow' }}
+    </p>
+  </article>
+
+  <article class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">
+    <h2 class="text-sm text-muted-color">Pago Semanal</h2>
+    <p class="mt-1 text-2xl font-semibold">{{ p.pago | currency: 'MXN' : 'symbol-narrow' }}</p>
+    <p class="mt-1 text-sm text-muted-color">Los {{ p.diaPago }}</p>
+  </article>
+
+  <article class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">
+    <h2 class="text-sm text-muted-color">Plazo</h2>
+    <p class="mt-1 text-2xl font-semibold">{{ p.plazo }} pagos</p>
+    <p class="mt-1 text-sm text-muted-color">{{ p.meses }} meses</p>
+  </article>
+
+  <article class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">
+    <h2 class="text-sm text-muted-color">Primer Pago</h2>
+    <p class="mt-1 text-2xl font-semibold">{{ p.fechaInicio }}</p>
+    <p class="mt-1 text-sm text-muted-color">Término {{ p.fechaTermino }}</p>
+  </article>
+</section>

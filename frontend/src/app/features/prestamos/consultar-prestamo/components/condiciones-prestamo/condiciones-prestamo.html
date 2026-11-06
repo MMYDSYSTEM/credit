@@ -1,0 +1,29 @@
+@let p = prestamo();
+<section aria-labelledby="titulo-condiciones-prestamo" class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">
+  <h2 id="titulo-condiciones-prestamo" class="mb-3 text-lg font-semibold">Condiciones</h2>
+  <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+    <dt class="text-muted-color">Monto</dt>
+    <dd class="text-right font-medium">{{ p.monto | currency: 'MXN' : 'symbol-narrow' }}</dd>
+
+    <dt class="text-muted-color">Interés</dt>
+    <dd class="text-right font-medium">{{ p.tasaMensual }} % mensual</dd>
+
+    <dt class="text-muted-color">Día de Pago</dt>
+    <dd class="text-right font-medium">{{ p.diaPago }}</dd>
+
+    <dt class="text-muted-color">Pago</dt>
+    <dd class="text-right font-medium">{{ p.pago | currency: 'MXN' : 'symbol-narrow' }} semanal</dd>
+
+    <dt class="text-muted-color">Plazo</dt>
+    <dd class="text-right font-medium">{{ p.plazo }} pagos · {{ p.meses }} meses</dd>
+
+    <dt class="text-muted-color">Entrega</dt>
+    <dd class="text-right font-medium">{{ p.fechaEntrega }}</dd>
+
+    <dt class="text-muted-color">Inicio</dt>
+    <dd class="text-right font-medium">{{ p.fechaInicio }}</dd>
+
+    <dt class="text-muted-color">Término</dt>
+    <dd class="text-right font-medium">{{ p.fechaTermino }}</dd>
+  </dl>
+</section>
