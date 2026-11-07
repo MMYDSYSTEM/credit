@@ -1,16 +1,16 @@
-# Publica SOLO la carpeta frontend/ (Angular) en GitHub Pages.
-# La carpeta backend/ no se compila ni se publica.
-# La carpeta compilada se detecta sola dentro de frontend/dist/.
+# Publica Angular SIN SSR (CSR: renderizado en el navegador) en GitHub Pages.
+# El proyecto Angular está en la carpeta frontend/.
+# Guárdalo como .github/workflows/deploy.yml (usa solo uno de los dos archivos: CSR o SSR).
 
-name: Publicar Angular en GitHub Pages
+name: Publicar Angular (CSR) en GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
-      - 'frontend/**'                   # solo se ejecuta si cambió algo de Angular
+      - 'frontend/**'
       - '.github/workflows/deploy.yml'
-  workflow_dispatch:                    # permite publicar a mano desde la pestaña Actions
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend     # todos los comandos se ejecutan dentro de frontend/
+        working-directory: frontend
     steps:
       - name: Descargar código
         uses: actions/checkout@v5
@@ -45,35 +45,21 @@ jobs:
         # El sitio vive en https://<usuario>.github.io/<repositorio>/
         run: npx ng build --base-href "/${{ github.event.repository.name }}/"
 
-      - name: Preparar rutas de Angular
+      - name: Preparar sitio
         id: salida
-        # Busca la carpeta compilada sin importar cómo esté configurado outputPath en angular.json.
-        # GitHub Pages muestra 404.html en rutas que no existen como archivo;
-        # al ser una copia de index.html, Angular arranca y abre la pantalla correcta.
         run: |
-          echo "Contenido de dist/:"
-          find dist -maxdepth 3 -name "index*.html"
-
-          INDEX=$(find dist -name index.html -not -path "*/server/*" | head -n 1)
-
-          # Proyectos con SSR generan index.csr.html en lugar de index.html
+          # Busca index.html dentro de dist/ (dist/<proyecto>/browser o dist/<proyecto>)
+          INDEX=$(find dist -name index.html | head -n 1)
           if [ -z "$INDEX" ]; then
-            CSR=$(find dist -name index.csr.html -not -path "*/server/*" | head -n 1)
-            if [ -n "$CSR" ]; then
-              INDEX="$(dirname "$CSR")/index.html"
-              cp "$CSR" "$INDEX"
-              echo "Se usó index.csr.html (proyecto con SSR)"
-            fi
-          fi
-
-          if [ -z "$INDEX" ]; then
-            echo "No se encontró index.html dentro de dist/. Estructura generada:"
+            echo "No se encontró index.html en dist/. Estructura generada:"
             ls -R dist | head -50
             exit 1
           fi
-
           CARPETA=$(dirname "$INDEX")
           echo "Carpeta que se publicará: frontend/$CARPETA"
+
+          # GitHub Pages muestra 404.html en rutas que no existen como archivo;
+          # al ser una copia de index.html, Angular arranca y abre la pantalla correcta.
           cp "$INDEX" "$CARPETA/404.html"
           echo "carpeta=frontend/$CARPETA" >> "$GITHUB_OUTPUT"
 
