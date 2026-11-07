@@ -30,12 +30,13 @@ interface ClienteMock {
 }
 
 interface CondicionesMock {
+  tipoPrestamo: 'Diario' | 'Semanal' | 'Quincenal' | 'Mensual';
   monto: number;
-  tasaMensual: number;
-  diaPago: string;
+  tasa: number;
+  diaPago: string | null; // null en Diario
   pago: number;
-  plazo: number;
-  meses: number;
+  plazo: number; // en Diario, días sin contar domingos
+  meses: number | null; // null en Diario
   fechaEntrega: string;
   fechaInicio: string;
   fechaTermino: string;
@@ -73,12 +74,37 @@ function sumarDias(fecha: string, dias: number): string {
   return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
 }
 
+/** Fechas de cobro de un préstamo diario: `cantidad` días desde el inicio, saltando domingos. */
+function fechasDiarias(inicio: string, cantidad: number): string[] {
+  const fechas: string[] = [];
+  for (let i = 0; fechas.length < cantidad; i++) {
+    const fecha = sumarDias(inicio, i);
+    const [anio, mes, dia] = fecha.split('-').map(Number);
+    if (new Date(anio, mes - 1, dia).getDay() !== 0) {
+      fechas.push(fecha);
+    }
+  }
+  return fechas;
+}
+
+/** Días entre pagos de Semanal, Quincenal y Mensual: cada pago cae el mismo día de la semana. */
+const DIAS_ENTRE_PAGOS: Record<string, number> = { Semanal: 7, Quincenal: 14, Mensual: 28 };
+
+/**
+ * Diario: interés total = monto × tasa, repartido entre los días; se cobra de lunes a sábado.
+ * Los demás: interés = monto × tasa mensual × meses, repartido entre los pagos (cada 7, 14 o 28 días).
+ */
 function crearAmortizaciones(c: CondicionesMock, pagadas = 0): AmortizacionMock[] {
+  const esDiario = c.tipoPrestamo === 'Diario';
   const capital = redondear(c.monto / c.plazo);
-  const interes = redondear((c.monto * (c.tasaMensual / 100) * c.meses) / c.plazo);
-  return Array.from({ length: c.plazo }, (_, i) => ({
+  const interesTotal = c.monto * (c.tasa / 100) * (esDiario ? 1 : (c.meses ?? 0));
+  const interes = redondear(interesTotal / c.plazo);
+  const fechas = esDiario
+    ? fechasDiarias(c.fechaInicio, c.plazo)
+    : Array.from({ length: c.plazo }, (_, i) => sumarDias(c.fechaInicio, i * DIAS_ENTRE_PAGOS[c.tipoPrestamo]));
+  return fechas.map((fechaVencimiento, i) => ({
     numero: i + 1,
-    fechaVencimiento: sumarDias(c.fechaInicio, i * 7),
+    fechaVencimiento,
     capital,
     interes,
     gastos: 0,
@@ -135,8 +161,9 @@ const prestamos: PrestamoMock[] = [
     '01',
     'cliente-1',
     {
+      tipoPrestamo: 'Semanal',
       monto: 2000,
-      tasaMensual: 15,
+      tasa: 15,
       diaPago: 'Lunes',
       pago: 575,
       plazo: 4,
@@ -151,8 +178,9 @@ const prestamos: PrestamoMock[] = [
     '02',
     'cliente-1',
     {
+      tipoPrestamo: 'Semanal',
       monto: 3000,
-      tasaMensual: 15,
+      tasa: 15,
       diaPago: 'Lunes',
       pago: 487.5,
       plazo: 8,
@@ -227,7 +255,7 @@ function listarPrestamosDeCliente(clienteId: string): Observable<HttpEvent<unkno
       monto: p.condiciones.monto,
       pago: p.condiciones.pago,
       plazo: p.condiciones.plazo,
-      fechaEntrega: p.condiciones.fechaEntrega,
+      fechaInicio: p.condiciones.fechaInicio,
       fechaTermino: p.condiciones.fechaTermino,
       estado: p.estado,
     }));

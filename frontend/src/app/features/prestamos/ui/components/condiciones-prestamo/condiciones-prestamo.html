@@ -6,16 +6,19 @@
     <dd class="text-right font-medium">{{ p.monto | currency: 'MXN' : 'symbol-narrow' }}</dd>
 
     <dt class="text-muted-color">Interés</dt>
-    <dd class="text-right font-medium">{{ p.tasaMensual }} % mensual</dd>
+    <dd class="text-right font-medium">{{ p.tasaTexto }}</dd>
 
-    <dt class="text-muted-color">Día de Pago</dt>
-    <dd class="text-right font-medium">{{ p.diaPago }}</dd>
+    <dt class="text-muted-color">Tipo</dt>
+    <dd class="text-right font-medium">{{ p.tipoPrestamo }}</dd>
+
+    <dt class="text-muted-color">Días de Cobro</dt>
+    <dd class="text-right font-medium">{{ p.diasCobro }}</dd>
 
     <dt class="text-muted-color">Pago</dt>
-    <dd class="text-right font-medium">{{ p.pago | currency: 'MXN' : 'symbol-narrow' }} semanal</dd>
+    <dd class="text-right font-medium">{{ p.pago | currency: 'MXN' : 'symbol-narrow' }} {{ p.periodoPago }}</dd>
 
     <dt class="text-muted-color">Plazo</dt>
-    <dd class="text-right font-medium">{{ p.plazo }} pagos · {{ p.meses }} meses</dd>
+    <dd class="text-right font-medium">{{ p.plazo }} pagos@if (p.plazoTexto) { · {{ p.plazoTexto }}}</dd>
 
     <dt class="text-muted-color">Entrega</dt>
     <dd class="text-right font-medium">{{ p.fechaEntrega }}</dd>

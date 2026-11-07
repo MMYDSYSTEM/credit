@@ -8,7 +8,7 @@
         <tr>
           <th scope="col">NP</th>
           <th scope="col">Fecha</th>
-          <th scope="col" class="text-right">Pago Semanal</th>
+          <th scope="col" class="text-right">Pago</th>
           <th scope="col" class="text-right">Capital</th>
           <th scope="col" class="text-right">Interés</th>
           <th scope="col" class="text-right">Extras</th>
@@ -19,7 +19,7 @@
         <tr [class]="a.esProxima ? 'bg-primary-500/15! font-semibold' : ''" [attr.aria-current]="a.esProxima ? 'true' : null">
           <td>{{ a.numero }}</td>
           <td>{{ a.fechaVencimiento }}</td>
-          <td class="text-right">{{ a.pagoSemanal | currency: 'MXN' : 'symbol-narrow' }}</td>
+          <td class="text-right">{{ a.pago | currency: 'MXN' : 'symbol-narrow' }}</td>
           <td class="text-right">{{ a.capital | currency: 'MXN' : 'symbol-narrow' }}</td>
           <td class="text-right">{{ a.interes | currency: 'MXN' : 'symbol-narrow' }}</td>
           <td class="text-right">{{ a.gastos | currency: 'MXN' : 'symbol-narrow' }}</td>

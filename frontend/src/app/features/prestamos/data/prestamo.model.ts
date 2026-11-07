@@ -7,14 +7,13 @@ export type EstadoAmortizacion = 'PAGADA' | 'PENDIENTE' | 'VENCIDA';
 export type TipoPrestamo = 'Diario' | 'Semanal' | 'Quincenal' | 'Mensual';
 
 export interface Condiciones {
-  monto: number;
-  tasaMensual: number;
   tipoPrestamo: TipoPrestamo;
-  dias: number | null; // solo en préstamos diarios: días que dura el préstamo
-  diaPago: string;
-  pago: number; // pago semanal
-  plazo: number; // número de pagos semanales
-  meses: number;
+  monto: number;
+  tasa: number;
+  diaPago: string | null; // null en Diario (se cobra de lunes a sábado)
+  pago: number; // pago por periodo
+  plazo: number; // número de pagos (en Diario, días sin contar domingos)
+  meses: number | null; // null en Diario
   fechaEntrega: string; // yyyy-MM-dd
   fechaInicio: string; // yyyy-MM-dd
   fechaTermino: string; // yyyy-MM-dd
@@ -64,7 +63,7 @@ export interface PrestamoResumen {
   monto: number;
   pago: number;
   plazo: number;
-  fechaEntrega: string; // yyyy-MM-dd
+  fechaInicio: string; // yyyy-MM-dd: primer pago
   fechaTermino: string; // yyyy-MM-dd
   estado: EstadoPrestamo;
 }
@@ -94,16 +93,38 @@ export interface ClienteNuevo {
   email: string | null; // opcional
 }
 
+/**
+ * Condiciones capturadas al generar un préstamo. Siempre se envían todos los campos:
+ * los que dependen del tipo de préstamo van en null cuando no aplican.
+ */
+export interface CondicionesRegistro {
+  // Capturados en todos los tipos
+  tipoPrestamo: TipoPrestamo;
+  monto: number;
+  tasa: number; // porcentaje por periodo del tipo de préstamo (en Diario, sobre el monto y repartido entre los días)
+  fechaEntrega: string; // yyyy-MM-dd
+
+  // Todos los tipos; en Diario las fechas se capturan, en los demás se calculan
+  fechaInicio: string; // yyyy-MM-dd: primer pago
+  fechaTermino: string; // yyyy-MM-dd: último pago
+  pago: number | null;
+  plazo: number | null; // número de pagos (en Diario, días sin contar domingos)
+
+  // Solo Semanal, Quincenal y Mensual (null en Diario)
+  diaPago: string | null;
+  meses: number | null;
+}
+
 /** Cliente nuevo: se crea junto con el préstamo. */
 export interface RegistrarPrestamoClienteNuevo {
   cliente: ClienteNuevo;
-  condiciones: Condiciones;
+  condiciones: CondicionesRegistro;
 }
 
 /** Cliente existente: el backend rechaza el alta si ya tiene un préstamo activo. */
 export interface RegistrarPrestamoClienteExistente {
   clienteId: string;
-  condiciones: Condiciones;
+  condiciones: CondicionesRegistro;
 }
 
 export type DatosRegistro = RegistrarPrestamoClienteNuevo | RegistrarPrestamoClienteExistente;

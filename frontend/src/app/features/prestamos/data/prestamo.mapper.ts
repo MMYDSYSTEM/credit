@@ -5,6 +5,7 @@ import {
   EstadoPrestamo,
   Prestamo,
   PrestamosDeCliente,
+  TipoPrestamo,
   TotalesPrestamo,
 } from './prestamo.model';
 
@@ -36,7 +37,7 @@ const ESTADOS_AMORTIZACION: Record<EstadoAmortizacion, EstadoVista> = {
 export interface AmortizacionVista {
   numero: number;
   fechaVencimiento: string; // dd/MM/yyyy
-  pagoSemanal: number;
+  pago: number;
   capital: number;
   interes: number;
   gastos: number;
@@ -52,12 +53,20 @@ export interface PrestamoVista {
   estadoSeveridad: Severidad;
   clienteId: string;
   clienteNombre: string;
+  tipoPrestamo: TipoPrestamo;
   monto: number;
-  tasaMensual: number;
-  diaPago: string;
+  /** "15 % mensual" o, en Diario, "15 % sobre el monto". */
+  tasaTexto: string;
+  /** "Lunes" o, en Diario, "Lunes a sábado". */
+  diasCobro: string;
+  /** "Pago Semanal", "Pago Diario"… */
+  tituloPago: string;
+  /** "semanal", "diario"… */
+  periodoPago: string;
   pago: number;
   plazo: number;
-  meses: number;
+  /** "4 meses"; null en Diario (solo se muestra el total de pagos). */
+  plazoTexto: string | null;
   fechaEntrega: string;
   fechaInicio: string;
   fechaTermino: string;
@@ -73,7 +82,7 @@ function mapearAmortizacion(dto: AmortizacionPrestamo, esProxima: boolean): Amor
   return {
     numero: dto.numero,
     fechaVencimiento: formatearFecha(dto.fechaVencimiento),
-    pagoSemanal: dto.capital + dto.interes + dto.gastos,
+    pago: dto.capital + dto.interes + dto.gastos,
     capital: dto.capital,
     interes: dto.interes,
     gastos: dto.gastos,
@@ -87,6 +96,7 @@ export function mapearPrestamo(dto: Prestamo): PrestamoVista {
   const proxima = dto.amortizaciones.find(a => a.estado === 'VENCIDA' || a.estado === 'PENDIENTE') ?? null;
   const { cliente, condiciones: c } = dto;
   const estado = ESTADOS_PRESTAMO[dto.estado];
+  const esDiario = c.tipoPrestamo === 'Diario';
 
   return {
     id: dto.id,
@@ -95,12 +105,15 @@ export function mapearPrestamo(dto: Prestamo): PrestamoVista {
     estadoSeveridad: estado.severidad,
     clienteId: cliente.id,
     clienteNombre: [cliente.nombre, cliente.apellidoPaterno, cliente.apellidoMaterno].filter(Boolean).join(' '),
+    tipoPrestamo: c.tipoPrestamo,
     monto: c.monto,
-    tasaMensual: c.tasaMensual,
-    diaPago: c.diaPago,
+    tasaTexto: esDiario ? `${c.tasa} % sobre el monto` : `${c.tasa} % mensual`,
+    diasCobro: esDiario ? 'Lunes a sábado' : (c.diaPago ?? ''),
+    tituloPago: `Pago ${c.tipoPrestamo}`,
+    periodoPago: c.tipoPrestamo.toLowerCase(),
     pago: c.pago,
     plazo: c.plazo,
-    meses: c.meses,
+    plazoTexto: esDiario ? null : `${c.meses} meses`,
     fechaEntrega: formatearFecha(c.fechaEntrega),
     fechaInicio: formatearFecha(c.fechaInicio),
     fechaTermino: formatearFecha(c.fechaTermino),
@@ -117,7 +130,7 @@ export interface PrestamoFilaVista {
   monto: number;
   pago: number;
   plazo: number;
-  fechaEntrega: string; // dd/MM/yyyy
+  fechaInicio: string; // dd/MM/yyyy
   fechaTermino: string; // dd/MM/yyyy
   estadoEtiqueta: string;
   estadoSeveridad: Severidad;
@@ -139,7 +152,7 @@ export function mapearPrestamosDeCliente(dto: PrestamosDeCliente): PrestamosDeCl
       monto: p.monto,
       pago: p.pago,
       plazo: p.plazo,
-      fechaEntrega: formatearFecha(p.fechaEntrega),
+      fechaInicio: formatearFecha(p.fechaInicio),
       fechaTermino: formatearFecha(p.fechaTermino),
       estadoEtiqueta: ESTADOS_PRESTAMO[p.estado].etiqueta,
       estadoSeveridad: ESTADOS_PRESTAMO[p.estado].severidad,

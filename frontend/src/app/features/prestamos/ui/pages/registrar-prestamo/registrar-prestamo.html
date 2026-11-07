@@ -71,7 +71,17 @@
     <!-- Condiciones del préstamo -->
     <fieldset formGroupName="condiciones">
       <legend class="mb-4 text-lg font-semibold">Condiciones del Préstamo</legend>
+      <!-- Comunes a todos los tipos de préstamo -->
       <div class="grid gap-4 sm:grid-cols-2">
+        <div class="flex flex-col gap-1">
+          <label for="tipoPrestamo" class="text-sm font-medium">Tipo de Préstamo</label>
+          <p-select inputId="tipoPrestamo" formControlName="tipoPrestamo" [options]="tiposPrestamo"
+            placeholder="Selecciona un Tipo" [fluid]="true" />
+          @if (tieneError('condiciones.tipoPrestamo', 'required')) {
+          <small class="text-red-600 dark:text-red-400">Selecciona el tipo de préstamo.</small>
+          }
+        </div>
+
         <div class="flex flex-col gap-1">
           <label for="monto" class="text-sm font-medium">Monto</label>
           <p-inputnumber inputId="monto" formControlName="monto" mode="currency" currency="MXN" locale="es-MX"
@@ -82,12 +92,11 @@
         </div>
 
         <div class="flex flex-col gap-1">
-          <label for="tasaMensual" class="text-sm font-medium">Interés Mensual</label>
-          <p-inputnumber inputId="tasaMensual" formControlName="tasaMensual" suffix=" %" [maxFractionDigits]="2"
-            [fluid]="true" />
-          @if (tieneError('condiciones.tasaMensual', 'required')) {
+          <label for="tasa" class="text-sm font-medium">{{ tituloPorcentaje() }}</label>
+          <p-inputnumber inputId="tasa" formControlName="tasa" suffix=" %" [maxFractionDigits]="2" [fluid]="true" />
+          @if (tieneError('condiciones.tasa', 'required')) {
           <small class="text-red-600 dark:text-red-400">El interés es obligatorio.</small>
-          } @else if (tieneError('condiciones.tasaMensual', 'min') || tieneError('condiciones.tasaMensual', 'max')) {
+          } @else if (tieneError('condiciones.tasa', 'min') || tieneError('condiciones.tasa', 'max')) {
           <small class="text-red-600 dark:text-red-400">El interés debe estar entre 0 y 100 %.</small>
           }
         </div>
@@ -100,72 +109,105 @@
           <small class="text-red-600 dark:text-red-400">La fecha de entrega es obligatoria.</small>
           }
         </div>
-
-        <div class="flex flex-col gap-1">
-          <label for="tipoPrestamo" class="text-sm font-medium">Tipo de Préstamo</label>
-          <p-select inputId="tipoPrestamo" formControlName="tipoPrestamo" [options]="tiposPrestamo"
-            placeholder="Selecciona un Tipo" [fluid]="true" />
-          @if (tieneError('condiciones.tipoPrestamo', 'required')) {
-          <small class="text-red-600 dark:text-red-400">Selecciona el tipo de préstamo.</small>
-          }
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <label for="diaPago" class="text-sm font-medium">Día de Pago</label>
-          <p-select inputId="diaPago" formControlName="diaPago" [options]="dias" placeholder="Selecciona un Día"
-            [fluid]="true" />
-          @if (tieneError('condiciones.diaPago', 'required')) {
-          <small class="text-red-600 dark:text-red-400">Selecciona el día de pago.</small>
-          }
-        </div>
-
-        @if (esDiario()) {
-        <div class="flex flex-col gap-1">
-          <label for="dias" class="text-sm font-medium">Días</label>
-          <p-inputnumber inputId="dias" formControlName="dias" [useGrouping]="false" [fluid]="true" />
-          @if (tieneError('condiciones.dias', 'required') || tieneError('condiciones.dias', 'min') ||
-          tieneError('condiciones.dias', 'entero')) {
-          <small class="text-red-600 dark:text-red-400">Debe ser un número entero mayor a cero.</small>
-          }
-        </div>
-        } @else {
-        <div class="flex flex-col gap-1">
-          <label for="meses" class="text-sm font-medium">Meses</label>
-          <p-inputnumber inputId="meses" formControlName="meses" [useGrouping]="false" [fluid]="true" />
-          @if (tieneError('condiciones.meses', 'required') || tieneError('condiciones.meses', 'min') ||
-          tieneError('condiciones.meses', 'entero')) {
-          <small class="text-red-600 dark:text-red-400">Debe ser un número entero mayor a cero.</small>
-          }
-        </div>
-        }
       </div>
 
-      <!-- Valores calculados: disabled, se actualizan solos -->
-      <div class="mt-6 border-t border-surface-200 pt-4 dark:border-surface-800">
-        <div class="grid gap-4 sm:grid-cols-2">
+      <!-- Campos según el tipo de préstamo -->
+      @switch (tipoPrestamo()) {
+      @case ('Diario') {
+      <!-- Diario: se cobra de lunes a sábado -->
+      <div formGroupName="diario">
+        <div class="mt-6 border-t border-surface-200 pt-4 dark:border-surface-800">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              <label for="fechaInicioDiario" class="text-sm font-medium">Fecha de Inicio</label>
+              <input pInputText id="fechaInicioDiario" type="date" formControlName="fechaInicio" />
+              @if (tieneError('condiciones.diario.fechaInicio', 'required')) {
+              <small class="text-red-600 dark:text-red-400">La fecha de inicio es obligatoria.</small>
+              }
+            </div>
 
+            <div class="flex flex-col gap-1">
+              <label for="fechaTerminoDiario" class="text-sm font-medium">Fecha de Fin</label>
+              <input pInputText id="fechaTerminoDiario" type="date" formControlName="fechaTermino" />
+              @if (tieneError('condiciones.diario.fechaTermino', 'required')) {
+              <small class="text-red-600 dark:text-red-400">La fecha de fin es obligatoria.</small>
+              } @else if (tieneError('condiciones.diario', 'rangoFechas')) {
+              <small class="text-red-600 dark:text-red-400">La fecha de fin no puede ser anterior a la de inicio.</small>
+              } @else if (tieneError('condiciones.diario', 'sinDiasDeCobro')) {
+              <small class="text-red-600 dark:text-red-400">El rango solo tiene domingos: no hay días de cobro.</small>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Valores calculados: disabled, se actualizan solos -->
+        <div class="mt-6 border-t border-surface-200 pt-4 dark:border-surface-800">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              <label for="pagoDiario" class="text-sm font-medium">Pago Diario</label>
+              <p-inputnumber inputId="pagoDiario" formControlName="pago" mode="currency" currency="MXN"
+                locale="es-MX" [fluid]="true" />
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label for="plazoDiario" class="text-sm font-medium">Plazo (días, sin domingos)</label>
+              <p-inputnumber inputId="plazoDiario" formControlName="plazo" [useGrouping]="false" [fluid]="true" />
+            </div>
+          </div>
+        </div>
+      </div>
+      }
+      @default {
+      <!-- Semanal, Quincenal y Mensual -->
+      <div formGroupName="periodico">
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
           <div class="flex flex-col gap-1">
-            <label for="pago" class="text-sm font-medium">Pago</label>
-            <p-inputnumber inputId="pago" formControlName="pago" mode="currency" currency="MXN" locale="es-MX"
+            <label for="diaPago" class="text-sm font-medium">Día de Pago</label>
+            <p-select inputId="diaPago" formControlName="diaPago" [options]="dias" placeholder="Selecciona un Día"
               [fluid]="true" />
+            @if (tieneError('condiciones.periodico.diaPago', 'required')) {
+            <small class="text-red-600 dark:text-red-400">Selecciona el día de pago.</small>
+            }
           </div>
 
           <div class="flex flex-col gap-1">
-            <label for="plazo" class="text-sm font-medium">Plazo</label>
-            <p-inputnumber inputId="plazo" formControlName="plazo" [useGrouping]="false" [fluid]="true" />
+            <label for="meses" class="text-sm font-medium">Meses</label>
+            <p-inputnumber inputId="meses" formControlName="meses" [useGrouping]="false" [fluid]="true" />
+            @if (tieneError('condiciones.periodico.meses', 'required') ||
+            tieneError('condiciones.periodico.meses', 'min') || tieneError('condiciones.periodico.meses', 'entero')) {
+            <small class="text-red-600 dark:text-red-400">Debe ser un número entero mayor a cero.</small>
+            }
           </div>
+        </div>
 
-          <div class="flex flex-col gap-1">
-            <label for="fechaInicio" class="text-sm font-medium">Fecha de Inicio</label>
-            <input pInputText id="fechaInicio" type="date" formControlName="fechaInicio" />
-          </div>
+        <!-- Valores calculados: disabled, se actualizan solos -->
+        <div class="mt-6 border-t border-surface-200 pt-4 dark:border-surface-800">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              <label for="pago" class="text-sm font-medium">Pago</label>
+              <p-inputnumber inputId="pago" formControlName="pago" mode="currency" currency="MXN" locale="es-MX"
+                [fluid]="true" />
+            </div>
 
-          <div class="flex flex-col gap-1">
-            <label for="fechaTermino" class="text-sm font-medium">Fecha de Término</label>
-            <input pInputText id="fechaTermino" type="date" formControlName="fechaTermino" />
+            <div class="flex flex-col gap-1">
+              <label for="plazo" class="text-sm font-medium">Plazo</label>
+              <p-inputnumber inputId="plazo" formControlName="plazo" [useGrouping]="false" [fluid]="true" />
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label for="fechaInicio" class="text-sm font-medium">Fecha de Inicio</label>
+              <input pInputText id="fechaInicio" type="date" formControlName="fechaInicio" />
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label for="fechaTermino" class="text-sm font-medium">Fecha de Término</label>
+              <input pInputText id="fechaTermino" type="date" formControlName="fechaTermino" />
+            </div>
           </div>
         </div>
       </div>
+      }
+      }
     </fieldset>
 
     @if (error()) {

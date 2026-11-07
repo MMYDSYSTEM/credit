@@ -21,22 +21,36 @@ import { map, merge } from 'rxjs';
 import {
   AmortizacionProyectada,
   DIAS_MINIMOS_PRIMER_PAGO,
-  PAGOS_POR_MES,
   calcularAmortizaciones,
+  calcularAmortizacionesDiarias,
   calcularFechaInicio,
   calcularFechaTermino,
+  calcularInicioDiario,
   calcularNumeroPagos,
   calcularPago,
+  calcularPagoDiario,
+  calcularPlazoDiario,
   fechaDeHoy,
 } from '../../../data/prestamo.calculos';
-import { DatosRegistro, TipoPrestamo } from '../../../data/prestamo.model';
+import { CondicionesRegistro, DatosRegistro, TipoPrestamo } from '../../../data/prestamo.model';
 import { RegistrarPrestamoStore } from '../../../data/registrar-prestamo.store';
-import { MAX_NOMBRE, PATRON_NOMBRE, entero, noVacio } from '../../../data/prestamo.validadores';
+import {
+  MAX_NOMBRE,
+  PATRON_NOMBRE,
+  conDiasDeCobro,
+  entero,
+  noVacio,
+  rangoFechas,
+} from '../../../data/prestamo.validadores';
 import { TablaAmortizacionProyectada } from '../../components/tabla-amortizacion-proyectada/tabla-amortizacion-proyectada';
 
 // Reactive Forms: excepción 2 de la sección 5.5 del README (formulario existente, sin tarea aprobada de migración a Signal Forms).
 
 const DIA_PAGO_INICIAL = 'Lunes';
+
+/** Campos que solo usan Semanal, Quincenal y Mensual: en un préstamo diario se envían en null. */
+const SIN_DIA_PAGO_NI_MESES = { diaPago: null, meses: null } satisfies Partial<CondicionesRegistro>;
+
 const VALIDADORES_NOMBRE = [
   noVacio,
   Validators.maxLength(MAX_NOMBRE),
@@ -107,7 +121,6 @@ export class RegistrarPrestamo {
   /** Días de cobro: de lunes a sábado. */
   protected readonly dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   protected readonly maxNombre = MAX_NOMBRE;
-  protected readonly pagosPorMes = PAGOS_POR_MES;
   protected readonly diasMinimosPrimerPago = DIAS_MINIMOS_PRIMER_PAGO;
 
   protected readonly form = this.fb.group({
@@ -118,37 +131,51 @@ export class RegistrarPrestamo {
       // Opcional: vacío es válido; si se escribe, debe tener formato de email.
       email: ['', Validators.email],
     }),
+    /*
+     * Condiciones: los campos comunes van sueltos; los que dependen del tipo de préstamo, en un grupo por tipo.
+     * Solo el grupo del tipo elegido está habilitado (aplicarTipo); un grupo deshabilitado no se valida.
+     */
     condiciones: this.fb.group({
+      // ── Comunes a todos los tipos ──
+      tipoPrestamo: this.fb.control<TipoPrestamo>('Diario', Validators.required),
       monto: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.01)]),
-      tasaMensual: this.fb.control<number | null>(15, [
-        Validators.required,
-        Validators.min(0.01),
-        Validators.max(100),
-      ]),
-      tipoPrestamo: this.fb.control<TipoPrestamo>('Semanal', Validators.required),
-      diaPago: [DIA_PAGO_INICIAL, Validators.required],
-      /*
-       * Campos calculados: disabled (no se editan ni se validan; Angular omite los disabled).
-       * Siempre tienen valor al enviar porque dependen de campos obligatorios (día de pago, monto, meses),
-       * y se envían porque generar() usa getRawValue().
-       */
-      // Calculado: pago semanal = (monto + monto × tasa × meses) ÷ plazo.
-      pago: this.fb.control<number | null>({ value: null, disabled: true }),
-      // Calculado: meses × 4 (número de pagos semanales).
-      plazo: this.fb.control<number | null>({ value: null, disabled: true }),
-      meses: this.fb.control<number | null>(null, [Validators.required, Validators.min(1), entero]),
-      // Solo en préstamos diarios (sustituye a meses). Deshabilitado en los demás tipos: no se valida.
-      dias: this.fb.control<number | null>({ value: null, disabled: true }, [
-        Validators.required,
-        Validators.min(1),
-        entero,
-      ]),
+      // Porcentaje por periodo del tipo de préstamo (diario, semanal, quincenal o mensual).
+      tasa: this.fb.control<number | null>(15, [Validators.required, Validators.min(0.01), Validators.max(100)]),
       // Por defecto, hoy (editable).
       fechaEntrega: [fechaDeHoy(), Validators.required],
-      // Calculada: primer pago, el primer día de cobro al menos 7 días después de la entrega.
-      fechaInicio: [{ value: calcularFechaInicio(fechaDeHoy(), DIA_PAGO_INICIAL), disabled: true }],
-      // Calculada: inicio + (plazo − 1) semanas.
-      fechaTermino: [{ value: '', disabled: true }],
+
+      // ── Diario: se cobra de lunes a sábado ──
+      diario: this.fb.group(
+        {
+          // Por defecto, el día siguiente a la entrega (sin domingo). Editable.
+          fechaInicio: [calcularInicioDiario(fechaDeHoy()), Validators.required],
+          fechaTermino: ['', Validators.required],
+          // Calculados (solo lectura):
+          // plazo = días entre inicio y fin, ambos incluidos, sin domingos
+          plazo: this.fb.control<number | null>({ value: null, disabled: true }),
+          // pago = (monto + monto × tasa) ÷ plazo
+          pago: this.fb.control<number | null>({ value: null, disabled: true }),
+        },
+        { validators: [rangoFechas('fechaInicio', 'fechaTermino'), conDiasDeCobro('fechaInicio', 'fechaTermino')] },
+      ),
+
+      // ── Semanal, Quincenal y Mensual ──
+      periodico: this.fb.group({
+        diaPago: [DIA_PAGO_INICIAL, Validators.required],
+        meses: this.fb.control<number | null>(null, [Validators.required, Validators.min(1), entero]),
+        /*
+         * Calculados: disabled (no se editan ni se validan) y se envían porque se lee getRawValue().
+         * Siempre tienen valor al enviar porque dependen de campos obligatorios.
+         */
+        // pago = (monto + monto × tasa × meses) ÷ plazo
+        pago: this.fb.control<number | null>({ value: null, disabled: true }),
+        // plazo = meses × pagos por mes del tipo (Semanal 4, Quincenal 2, Mensual 1)
+        plazo: this.fb.control<number | null>({ value: null, disabled: true }),
+        // Primer pago: el primer día de cobro al menos 7 días después de la entrega.
+        fechaInicio: [{ value: calcularFechaInicio(fechaDeHoy(), DIA_PAGO_INICIAL), disabled: true }],
+        // inicio + (plazo − 1) × 7, 14 o 28 días según el tipo
+        fechaTermino: [{ value: '', disabled: true }],
+      }),
     }),
   });
 
@@ -158,19 +185,20 @@ export class RegistrarPrestamo {
     { initialValue: this.form.valid },
   );
 
-  /** Préstamo diario: se capturan días en lugar de meses. */
-  protected readonly esDiario = toSignal(
-    this.form.controls.condiciones.controls.tipoPrestamo.valueChanges.pipe(map(tipo => tipo === 'Diario')),
-    { initialValue: false },
+  /** Tipo de préstamo elegido. */
+  protected readonly tipoPrestamo = toSignal(
+    this.form.controls.condiciones.controls.tipoPrestamo.valueChanges,
+    { initialValue: this.form.controls.condiciones.controls.tipoPrestamo.value },
   );
 
-  /**
-   * Ver Detalle y Generar Préstamo se habilitan solo con el formulario válido y sin bloqueo.
-   * Préstamo diario: deshabilitados hasta definir sus reglas de cálculo (pago, plazo y fechas).
-   */
-  protected readonly puedeContinuar = computed(
-    () => this.formularioValido() && !this.bloqueado() && !this.esDiario(),
-  );
+  /** Préstamo diario: fechas de inicio y fin en lugar de día de pago y meses. */
+  protected readonly esDiario = computed(() => this.tipoPrestamo() === 'Diario');
+
+  /** Título del porcentaje según el tipo: "Porcentaje Diario", "Porcentaje Semanal"… */
+  protected readonly tituloPorcentaje = computed(() => `Porcentaje ${this.tipoPrestamo()}`);
+
+  /** Ver Detalle y Generar Préstamo se habilitan solo con el formulario válido y sin bloqueo. */
+  protected readonly puedeContinuar = computed(() => this.formularioValido() && !this.bloqueado());
 
   constructor() {
     // Cliente existente: sus datos no se capturan (grupo deshabilitado, no se valida) y se cargan del backend.
@@ -203,49 +231,73 @@ export class RegistrarPrestamo {
 
     const c = this.form.controls.condiciones.controls;
 
-    // Diario: se capturan días y meses se deshabilita; los demás tipos, al revés.
-    c.tipoPrestamo.valueChanges.pipe(takeUntilDestroyed()).subscribe(tipo => {
-      if (tipo === 'Diario') {
-        c.meses.disable();
-        c.dias.enable();
-      } else {
-        c.dias.disable();
-        c.meses.enable();
-      }
-    });
+    // Campos según el tipo de préstamo: al arrancar y cada vez que cambia.
+    this.aplicarTipo(c.tipoPrestamo.value);
+    c.tipoPrestamo.valueChanges.pipe(takeUntilDestroyed()).subscribe(tipo => this.aplicarTipo(tipo));
+
+    // ── Calculados del préstamo diario ──
+    const d = c.diario.controls;
+
+    // La fecha de inicio por defecto se recalcula al cambiar la entrega (sigue siendo editable).
+    c.fechaEntrega.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(entrega => d.fechaInicio.setValue(calcularInicioDiario(entrega)));
+
+    // El plazo depende de las fechas de inicio y fin (sin domingos).
+    merge(d.fechaInicio.valueChanges, d.fechaTermino.valueChanges)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => d.plazo.setValue(calcularPlazoDiario(d.fechaInicio.value, d.fechaTermino.value)));
+
+    // El pago diario depende del monto, la tasa y el plazo.
+    merge(c.monto.valueChanges, c.tasa.valueChanges, d.plazo.valueChanges)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => d.pago.setValue(calcularPagoDiario(c.monto.value, c.tasa.value, d.plazo.value)));
+
+    // ── Calculados de Semanal, Quincenal y Mensual ──
+    const p = c.periodico.controls;
 
     // La fecha de inicio (primer pago) depende de la entrega y del día de pago.
-    merge(c.fechaEntrega.valueChanges, c.diaPago.valueChanges)
+    merge(c.fechaEntrega.valueChanges, p.diaPago.valueChanges)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => p.fechaInicio.setValue(calcularFechaInicio(c.fechaEntrega.value, p.diaPago.value)));
+
+    /*
+     * El plazo (número de pagos) depende de los meses y del tipo: meses × 4, × 2 o × 1.
+     * Al cambiar de tipo, el plazo se vuelve a calcular y, en cadena, la fecha de término y el pago:
+     * no quedan valores calculados con la fórmula del tipo anterior.
+     */
+    merge(p.meses.valueChanges, c.tipoPrestamo.valueChanges)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => p.plazo.setValue(calcularNumeroPagos(p.meses.value, c.tipoPrestamo.value)));
+
+    // La fecha de término depende de la fecha de inicio, del plazo y de los días entre pagos del tipo.
+    merge(p.fechaInicio.valueChanges, p.plazo.valueChanges)
       .pipe(takeUntilDestroyed())
       .subscribe(() =>
-        c.fechaInicio.setValue(calcularFechaInicio(c.fechaEntrega.value, c.diaPago.value)),
-      );
-
-    // El plazo (número de pagos) depende de los meses.
-    c.meses.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe((meses) => c.plazo.setValue(calcularNumeroPagos(meses)));
-
-    // La fecha de término depende de la fecha de inicio y del plazo.
-    merge(c.fechaInicio.valueChanges, c.plazo.valueChanges)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() =>
-        c.fechaTermino.setValue(calcularFechaTermino(c.fechaInicio.value, c.plazo.value)),
+        p.fechaTermino.setValue(calcularFechaTermino(p.fechaInicio.value, p.plazo.value, c.tipoPrestamo.value)),
       );
 
     // El pago depende del monto, la tasa, los meses y el plazo.
-    merge(
-      c.monto.valueChanges,
-      c.tasaMensual.valueChanges,
-      c.meses.valueChanges,
-      c.plazo.valueChanges,
-    )
+    merge(c.monto.valueChanges, c.tasa.valueChanges, p.meses.valueChanges, p.plazo.valueChanges)
       .pipe(takeUntilDestroyed())
-      .subscribe(() =>
-        c.pago.setValue(
-          calcularPago(c.monto.value, c.tasaMensual.value, c.meses.value, c.plazo.value),
-        ),
-      );
+      .subscribe(() => p.pago.setValue(calcularPago(c.monto.value, c.tasa.value, p.meses.value, p.plazo.value)));
+  }
+
+  /** Habilita solo el grupo de campos del tipo elegido; el otro se deshabilita y no se valida. */
+  private aplicarTipo(tipo: TipoPrestamo): void {
+    const { diario, periodico } = this.form.controls.condiciones.controls;
+    // enable() también habilita los calculados: se vuelven a dejar de solo lectura.
+    if (tipo === 'Diario') {
+      periodico.disable();
+      diario.enable();
+      const d = diario.controls;
+      [d.plazo, d.pago].forEach(campo => campo.disable());
+    } else {
+      diario.disable();
+      periodico.enable();
+      const p = periodico.controls;
+      [p.pago, p.plazo, p.fechaInicio, p.fechaTermino].forEach(campo => campo.disable());
+    }
   }
 
   /** El campo tiene ese error y el usuario ya lo tocó (o intentó enviar). */
@@ -254,10 +306,26 @@ export class RegistrarPrestamo {
     return !!control && control.hasError(error) && (control.touched || control.dirty);
   }
 
-  /** Datos listos para enviar. Solo se llama con el formulario válido: los numéricos ya no son null. */
+  /**
+   * Condiciones planas con todos los campos; los del grupo que no aplica al tipo elegido van en null.
+   * Solo se llama con el formulario válido: monto y tasa ya no son null.
+   */
+  private condicionesParaEnviar(): CondicionesRegistro {
+    const { tipoPrestamo, monto, tasa, fechaEntrega, diario, periodico } =
+      this.form.controls.condiciones.getRawValue();
+    return {
+      tipoPrestamo,
+      monto: monto as number,
+      tasa: tasa as number,
+      fechaEntrega,
+      ...(tipoPrestamo === 'Diario' ? { ...SIN_DIA_PAGO_NI_MESES, ...diario } : periodico),
+    };
+  }
+
+  /** Datos listos para enviar. Solo se llama con el formulario válido. */
   private datos(): DatosRegistro {
-    const { cliente, condiciones } = this.form.getRawValue();
-    const condicionesDto = condiciones as DatosRegistro['condiciones'];
+    const { cliente } = this.form.getRawValue();
+    const condicionesDto = this.condicionesParaEnviar();
     const clienteId = this.clienteId();
     if (clienteId) {
       return { clienteId, condiciones: condicionesDto };
@@ -286,13 +354,24 @@ export class RegistrarPrestamo {
     if (!this.puedeContinuar()) {
       return;
     }
-    const { condiciones } = this.datos();
-    const amortizaciones = calcularAmortizaciones(condiciones);
+    // Con el formulario válido, pago y plazo ya están calculados; meses solo es null en Diario.
+    const c = this.condicionesParaEnviar();
+    const amortizaciones =
+      c.tipoPrestamo === 'Diario'
+        ? calcularAmortizacionesDiarias({ monto: c.monto, tasa: c.tasa, plazo: c.plazo!, fechaInicio: c.fechaInicio })
+        : calcularAmortizaciones({
+            tipo: c.tipoPrestamo,
+            monto: c.monto,
+            tasa: c.tasa,
+            meses: c.meses!,
+            plazo: c.plazo!,
+            fechaInicio: c.fechaInicio,
+          });
     this.amortizaciones.set(amortizaciones);
     this.resumen.set({
-      plazo: condiciones.plazo,
-      pago: condiciones.pago,
-      diaPago: condiciones.diaPago,
+      plazo: c.plazo!,
+      pago: c.pago!,
+      diaPago: c.diaPago ?? 'Lunes a sábado',
       total: Math.round(amortizaciones.reduce((total, a) => total + a.pago, 0) * 100) / 100,
     });
     this.mostrarDetalle.set(true);

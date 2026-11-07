@@ -10,15 +10,17 @@
   </article>
 
   <article class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">
-    <h2 class="text-sm text-muted-color">Pago Semanal</h2>
+    <h2 class="text-sm text-muted-color">{{ p.tituloPago }}</h2>
     <p class="mt-1 text-2xl font-semibold">{{ p.pago | currency: 'MXN' : 'symbol-narrow' }}</p>
-    <p class="mt-1 text-sm text-muted-color">Los {{ p.diaPago }}</p>
+    <p class="mt-1 text-sm text-muted-color">Cobro: {{ p.diasCobro }}</p>
   </article>
 
   <article class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">
     <h2 class="text-sm text-muted-color">Plazo</h2>
     <p class="mt-1 text-2xl font-semibold">{{ p.plazo }} pagos</p>
-    <p class="mt-1 text-sm text-muted-color">{{ p.meses }} meses</p>
+    @if (p.plazoTexto) {
+    <p class="mt-1 text-sm text-muted-color">{{ p.plazoTexto }}</p>
+    }
   </article>
 
   <article class="rounded-xl border border-surface-200 p-4 dark:border-surface-800">

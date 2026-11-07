@@ -13,9 +13,9 @@
         <tr>
           <th scope="col">Folio</th>
           <th scope="col" class="text-right">Monto</th>
-          <th scope="col" class="text-right">Pago Semanal</th>
+          <th scope="col" class="text-right">Pago</th>
           <th scope="col">Plazo</th>
-          <th scope="col">Entrega</th>
+          <th scope="col">Inicio</th>
           <th scope="col">Término</th>
           <th scope="col">Estado</th>
           <th scope="col"><span class="sr-only">Acciones</span></th>
@@ -27,7 +27,7 @@
           <td class="text-right">{{ p.monto | currency: 'MXN' : 'symbol-narrow' }}</td>
           <td class="text-right">{{ p.pago | currency: 'MXN' : 'symbol-narrow' }}</td>
           <td>{{ p.plazo }} pagos</td>
-          <td>{{ p.fechaEntrega }}</td>
+          <td>{{ p.fechaInicio }}</td>
           <td>{{ p.fechaTermino }}</td>
           <td><p-tag [value]="p.estadoEtiqueta" [severity]="p.estadoSeveridad" /></td>
           <td class="text-right">
