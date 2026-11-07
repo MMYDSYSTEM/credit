@@ -1,7 +1,6 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
-import { provideClientHydration } from '@angular/platform-browser';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeuix/themes/aura';
 
@@ -19,7 +18,6 @@ export const appConfig: ApplicationConfig = {
       withFetch(),
       withInterceptors([apiUrlInterceptor, ...(environment.mockApi ? [clientesPrestamosMockInterceptor] : [])]),
     ),
-    provideClientHydration(),
     providePrimeNG({
       license: environment.primengLicense || undefined,
       ripple: true,
